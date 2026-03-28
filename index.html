@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Kółko i Krzyżyk z dźwiękiem</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #0f172a;
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .game {
+            text-align: center;
+        }
+        h1 {
+            margin-bottom: 10px;
+        }
+        .board {
+            display: grid;
+            grid-template-columns: repeat(3, 100px);
+            grid-template-rows: repeat(3, 100px);
+            gap: 8px;
+            margin: 20px auto;
+        }
+        .cell {
+            background: #1e293b;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            cursor: pointer;
+            border-radius: 12px;
+            user-select: none;
+        }
+        .cell:hover {
+            background: #334155;
+        }
+        .status {
+            margin-top: 10px;
+            font-size: 18px;
+        }
+        button {
+            margin-top: 15px;
+            padding: 10px 20px;
+            font-size: 16px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            background: #22c55e;
+        }
+        button:hover {
+            background: #16a34a;
+        }
+    </style>
+</head>
+<body>
+    <div class="game">
+        <h1>Kółko i Krzyżyk</h1>
+        <div class="board" id="board"></div>
+        <div class="status" id="status">Twój ruch: O</div>
+        <button onclick="resetGame()">Restart</button>
+    </div>
+
+    <script>
+        const boardElement = document.getElementById("board");
+        const statusElement = document.getElementById("status");
+        let board = Array(9).fill(null);
+        const HUMAN = "O";
+        const AI = "X";
+        let gameOver = false;
+        const winPatterns = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+
+        const moveSound = new Audio('https://www.soundjay.com/button/sounds/button-16.mp3');
+
+        function createBoard() {
+            boardElement.innerHTML = "";
+            board.forEach((value, index) => {
+                const cell = document.createElement("div");
+                cell.className = "cell";
+                cell.textContent = value !== null ? value : "";
+                cell.addEventListener("click", () => humanMove(index));
+                boardElement.appendChild(cell);
+            });
+        }
+
+        function humanMove(index) {
+            if (board[index] !== null || gameOver) return;
+            board[index] = HUMAN;
+            moveSound.play();
+            createBoard();
+            if (checkWinner(board, HUMAN)) { statusElement.textContent = "Wygrałeś 🎉"; gameOver = true; return; }
+            if (isDraw(board)) { statusElement.textContent = "Remis"; gameOver = true; return; }
+            statusElement.textContent = "Ruch komputera...";
+            setTimeout(aiMove, 300);
+        }
+
+        function aiMove() {
+            if (gameOver) return;
+            const empty = board.map((v,i)=>v===null?i:null).filter(v=>v!==null);
+            if(empty.length === 0) return;
+            let move = Math.random()<0.3 ? empty[Math.floor(Math.random()*empty.length)] : minimax(board, AI).index;
+            board[move] = AI;
+            moveSound.play();
+            createBoard();
+            if (checkWinner(board, AI)) { statusElement.textContent = "Komputer wygrywa 😈"; gameOver = true; }
+            else if (isDraw(board)) { statusElement.textContent = "Remis"; gameOver = true; }
+            else { statusElement.textContent = "Twój ruch: O"; }
+        }
+
+        function minimax(newBoard, player) {
+            const empty = newBoard.map((v,i)=>v===null?i:null).filter(v=>v!==null);
+            if(checkWinner(newBoard,HUMAN)) return {score:-10};
+            if(checkWinner(newBoard,AI)) return {score:10};
+            if(empty.length===0) return {score:0};
+            const moves=[];
+            for(let i of empty){
+                const move={index:i};
+                newBoard[i]=player;
+                const result=minimax(newBoard, player===AI?HUMAN:AI);
+                move.score=result.score;
+                newBoard[i]=null;
+                moves.push(move);
+            }
+            let bestMove;
+            if(player===AI){
+                let bestScore=-Infinity;
+                for(let m of moves){if(m.score>bestScore){bestScore=m.score;bestMove=m;}}
+            } else {
+                let bestScore=Infinity;
+                for(let m of moves){if(m.score<bestScore){bestScore=m.score;bestMove=m;}}
+            }
+            return bestMove;
+        }
+
+        function checkWinner(b, player){ return winPatterns.some(p=>p.every(i=>b[i]===player)); }
+        function isDraw(b){ return b.every(c=>c!==null); }
+        function resetGame(){ board=Array(9).fill(null); gameOver=false; statusElement.textContent="Twój ruch: O"; createBoard(); }
+
+        createBoard();
+        statusElement.textContent = "Twój ruch: O";
+    </script>
+</body>
+</html>
